@@ -8,58 +8,54 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
 # Should This Loan be Approved or Denied?
 
 ## Setup
 ```{r}
 # Setup
-SBA <- read.csv(file = "SBAnational.csv", header = T)
-head(SBA,5)
-
-data <- read.csv("/Users/yuqizhang/Desktop/SBAnational.csv")
-
-head(data)
-
 library(lubridate)
 library(tidyverse)
 library(broom)
 
-a <- data %>% 
+SBAnational_raw <- read.csv(file = "SBAnational.csv", header = T)
+head(SBAnational_raw, 5)
+nrow(SBAnational_raw)
+```
+## Section 1: Pre-Process
+
+### Section 1.1: Data Cleaning
+```{r}
+SBAnational <- SBAnational_raw %>% 
   mutate(DisbursementDate = dmy(DisbursementDate)) %>% 
-  filter( LowDoc %in% c("Y", "N"), 
-           year(DisbursementDate)>= 2000)
+  filter( LowDoc %in% c("Y", "N"),
+          year(DisbursementDate) >= 2000)
+nrow(SBAnational)
 ```
 
-## Section 1: Explore the Variables
-
-### Section 1.1: Y v.s X1 ...
+### Section 1.2: Values Replacing
 ```{r}
 
 ```
 
-### Section 1.2: Y v.s X2 ...
+### Section 1.3: Data Re-format/Transformation
 ```{r}
 
 ```
 
-### Section 1.3: Y v.s X3 ...
+## Section 2: Explore the Variables
+
+### Section 2.1: Y v.s X1 ...
 ```{r}
 
 ```
 
-## Section 2: Pre-Process
-
-### Section 2.1: Data Cleaning
+### Section 2.2: Y v.s X2 ...
 ```{r}
 
 ```
 
-### Section 2.2: Values Replacing
-```{r}
-
-```
-
-### Section 2.3: Data Re-format/Transformation
+### Section 2.3: Y v.s X3 ...
 ```{r}
 
 ```
