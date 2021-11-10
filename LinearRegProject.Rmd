@@ -43,10 +43,6 @@ SBA_NY <- SBA_NY[!is.na(SBA_NY$NAICS), ]
 
 ### Section 1.2: Values Replacing
 ```{r}
-# Only keep the first two number
-SBA_NY$NAICS <- as.numeric(substr(as.character(SBA_NY$NAICS), 
-                                       start = 1, stop = 2))
-
 # Change string to number
 rmSym <- function(string){
   string <- substr(string, start = 2, stop = nchar(string))
@@ -71,6 +67,14 @@ head(SBA_NY, 5)
 ## Section 2: Explore the Variables
 ```{r}
 # Define default rate
+SBA_NY_NAICS <- SBA_NY %>%
+  mutate(Industy_code = as.numeric(substr(as.character(SBA_NY$NAICS), 
+                                       start = 1, stop = 2))) %>%
+  group_by(Industy_code) %>%
+  summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
+            PIF = sum(MIS_Status =="P I F"), 
+            default_rate = CHGOFF /(CHGOFF +PIF))
+SBA_NY_NAICS
 ```
 
 ### Section 2.1: Each industry default rate v.s NAICS
