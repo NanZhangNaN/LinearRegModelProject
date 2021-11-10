@@ -69,6 +69,9 @@ head(SBA_NY, 5)
 ```
 
 ## Section 2: Explore the Variables
+```{r}
+# Define default rate
+```
 
 ### Section 2.1: Each industry default rate v.s NAICS
 ```{r}
