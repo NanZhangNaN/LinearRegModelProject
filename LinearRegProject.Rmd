@@ -30,7 +30,8 @@ nrow(SBAnational_raw)
 SBAnational <- SBAnational_raw %>% 
   mutate(DisbursementDate = dmy(DisbursementDate)) %>% 
   filter( LowDoc %in% c("Y", "N"),
-          year(DisbursementDate) >= 2000)
+          year(DisbursementDate) >= 2000,
+          State =="NY")
 nrow(SBAnational)
 #apply(is.na(SBAnational), 2, sum)
 ```
