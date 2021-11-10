@@ -29,14 +29,14 @@ SBAnational_raw <- na.omit(SBAnational_raw)
 ```{r}
 # Choose the data after 2000
 # Choose the data in NY
-SBAnational <- SBAnational_raw %>% 
+SBA_NY <- SBAnational_raw %>% 
   mutate(DisbursementDate = dmy(DisbursementDate)) %>% 
-  filter( LowDoc %in% c("Y", "N"), year(DisbursementDate) >= 2000, State =="NY")
-nrow(SBAnational)
+  filter(LowDoc %in% c("Y", "N"), year(DisbursementDate) >= 2000, State =="NY")
+nrow(SBA_NY)
 
 # Remove the 0's in NAICS
-SBAnational$NAICS[SBAnational$NAICS==0] <- NA
-SBAnational <- SBAnational[!is.na(SBAnational$NAICS), ]
+SBA_NY$NAICS[SBA_NY$NAICS==0] <- NA
+SBA_NY <- SBA_NY[!is.na(SBA_NY$NAICS), ]
 
 #apply(is.na(SBAnational), 2, sum)
 ```
@@ -44,7 +44,7 @@ SBAnational <- SBAnational[!is.na(SBAnational$NAICS), ]
 ### Section 1.2: Values Replacing
 ```{r}
 # Only keep the first two number
-SBAnational$NAICS <- as.numeric(substr(as.character(SBAnational$NAICS), 
+SBA_NY$NAICS <- as.numeric(substr(as.character(SBA_NY$NAICS), 
                                        start = 1, stop = 2))
 
 # Change string to number
@@ -52,16 +52,16 @@ rmSym <- function(string){
   string <- substr(string, start = 2, stop = nchar(string))
   return(string)
 }
-SBAnational$DisbursementGross <- 
-  as.numeric(gsub(",","", rmSym(SBAnational$DisbursementGross)))
-SBAnational$BalanceGross <- 
-  as.numeric(gsub(",","", rmSym(SBAnational$BalanceGross)))
-SBAnational$GrAppv <- as.numeric(gsub(",","", rmSym(SBAnational$GrAppv)))
-SBAnational$SBA_Appv <- as.numeric(gsub(",","", rmSym(SBAnational$SBA_Appv)))
+SBA_NY$DisbursementGross <- 
+  as.numeric(gsub(",","", rmSym(SBA_NY$DisbursementGross)))
+SBA_NY$BalanceGross <- 
+  as.numeric(gsub(",","", rmSym(SBA_NY$BalanceGross)))
+SBA_NY$GrAppv <- as.numeric(gsub(",","", rmSym(SBA_NY$GrAppv)))
+SBA_NY$SBA_Appv <- as.numeric(gsub(",","", rmSym(SBA_NY$SBA_Appv)))
 
-head(SBAnational, 5)
-apply(is.na(SBAnational), 2, sum)
-SBAnational$BalanceGross
+head(SBA_NY, 5)
+apply(is.na(SBA_NY), 2, sum)
+SBA_NY$BalanceGross
 ```
 
 ### Section 1.3: Data Re-format/Transformation
@@ -73,7 +73,7 @@ SBAnational$BalanceGross
 
 ### Section 2.1: Each industry default rate v.s NAICS
 ```{r}
-SBAnational$NAICS
+SBA_NY$NAICS
 ```
 
 ### Section 2.2: Y v.s X2 ...
@@ -91,14 +91,14 @@ SBAnational$NAICS
 ### Section 3.1: Split Training-Testing data
 ```{r}
 ## 50% of the sample size
-sample_size <- floor(0.5 * nrow(SBAnational))
+sample_size <- floor(0.5 * nrow(SBA_NY))
 
 ## set the seed to make partition reproducible
 set.seed(123)
-train_index <- sample(seq_len(nrow(SBAnational)), size = sample_size)
+train_index <- sample(seq_len(nrow(SBA_NY)), size = sample_size)
 
-SBA_train <- SBAnational[train_index, ]
-SBA_test <- SBAnational[-train_index, ]
+SBA_train <- SBA_NY[train_index, ]
+SBA_test <- SBA_NY[-train_index, ]
 ```
 
 ### Section 3.2: ...
