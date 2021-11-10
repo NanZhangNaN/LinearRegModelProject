@@ -1,6 +1,6 @@
 ---
 title: "LinearRegProject"
-author: "Nan Zhang"
+author: "Nan Zhang, Lichun He, Yuqi Zhang"
 date: "11/10/2021"
 output: html_document
 ---
