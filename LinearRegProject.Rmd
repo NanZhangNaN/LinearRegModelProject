@@ -15,6 +15,19 @@ knitr::opts_chunk$set(echo = TRUE)
 # Setup
 SBA <- read.csv(file = "SBAnational.csv", header = T)
 head(SBA,5)
+
+data <- read.csv("/Users/yuqizhang/Desktop/SBAnational.csv")
+
+head(data)
+
+library(lubridate)
+library(tidyverse)
+library(broom)
+
+a <- data %>% 
+  mutate(DisbursementDate = dmy(DisbursementDate)) %>% 
+  filter( LowDoc %in% c("Y", "N"), 
+           year(DisbursementDate)>= 2000)
 ```
 
 ## Section 1: Explore the Variables
