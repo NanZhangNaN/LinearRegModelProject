@@ -66,12 +66,12 @@ SBAnational$SBA_Appv <- as.numeric(gsub(",","", rmSym(SBAnational$SBA_Appv)))
 
 ## Section 2: Explore the Variables
 
-### Section 2.1: Y v.s X1 ...
+### Section 2.1: NAICS v.s Each industry default rate
 ```{r}
 
 ```
 
-### Section 2.2: Y v.s X2 ...
+### Section 2.2: New Exist v.s Each industry default rate
 ```{r}
 
 ```
