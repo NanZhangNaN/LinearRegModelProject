@@ -90,9 +90,16 @@ plot(x = SBA_NY_NAICS$Industy_code, y = SBA_NY_NAICS$default_rate,
 
 From the graphs, we can see that the default rates are different in each industry, so we take NAICS into our consideration
 
-### Section 2.2: Y v.s X2 ...
+### Section 2.2: Each industry default rate v.s Term
 ```{r}
-
+SBA_NY_Term <- SBA_NY %>%
+  mutate(LoanTerm = case_when(Term >= 120 ~ "Long",
+                              Term < 120 ~ "Short")) %>%
+  group_by(LoanTerm) %>%
+  summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
+            PIF = sum(MIS_Status =="P I F"), 
+            default_rate = round(CHGOFF /(CHGOFF +PIF),2))
+SBA_NY_Term
 ```
 
 ### Section 2.3: Y v.s X3 ...
