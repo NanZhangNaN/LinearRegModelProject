@@ -32,17 +32,24 @@ SBAnational_raw <- na.omit(SBAnational_raw)
 SBA_NY <- SBAnational_raw %>% 
   mutate(DisbursementDate = dmy(DisbursementDate)) %>% 
   filter( LowDoc %in% c("Y", "N"), year(DisbursementDate) >= 2000, State =="NY")
-nrow(SBA_NY)
 
 # Remove the 0's in NAICS
 SBA_NY$NAICS[SBA_NY$NAICS==0] <- NA
 SBA_NY <- SBA_NY[!is.na(SBA_NY$NAICS), ]
 
+# Remove empty string 
+SBA_NY <- SBA_NY[SBA_NY$MIS_Status != "",]
+
 #apply(is.na(SBA_NY), 2, sum)
+nrow(SBA_NY)
 ```
 
 ### Section 1.2: Values Replacing
 ```{r}
+# Only keep the first two number
+SBA_NY$NAICS <- as.numeric(substr(as.character(SBA_NY$NAICS), 
+                                       start = 1, stop = 2))
+
 # Change string to number
 rmSym <- function(string){
   string <- substr(string, start = 2, stop = nchar(string))
@@ -65,22 +72,23 @@ head(SBA_NY, 5)
 ```
 
 ## Section 2: Explore the Variables
+
+### Section 2.1: Each industry default rate v.s NAICS
 ```{r}
-# Define default rate
 SBA_NY_NAICS <- SBA_NY %>%
   mutate(Industy_code = as.numeric(substr(as.character(SBA_NY$NAICS), 
                                        start = 1, stop = 2))) %>%
   group_by(Industy_code) %>%
   summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
             PIF = sum(MIS_Status =="P I F"), 
-            default_rate = CHGOFF /(CHGOFF +PIF))
+            default_rate = CHGOFF /(CHGOFF + PIF))
 SBA_NY_NAICS
+plot(x = SBA_NY_NAICS$Industy_code, y = SBA_NY_NAICS$default_rate, 
+     main = "the default rate of each industry", 
+     xlab = "Industy", ylab = "default rate")
 ```
 
-### Section 2.1: Each industry default rate v.s NAICS
-```{r}
-SBA_NY$NAICS
-```
+From the graphs, we can see that the default rates are different in each industry, so we take NAICS into our consideration
 
 ### Section 2.2: Y v.s X2 ...
 ```{r}
