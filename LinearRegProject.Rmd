@@ -90,7 +90,7 @@ plot(x = SBA_NY_NAICS$Industy_code, y = SBA_NY_NAICS$default_rate,
 
 From the graphs, we can see that the default rates are different in each industry, so we take NAICS into our consideration
 
-### Section 2.2: Each industry default rate v.s Term
+### Section 2.2: Each loan term default rate v.s Term
 ```{r}
 SBA_NY_Term <- SBA_NY %>%
   mutate(LoanTerm = case_when(Term >= 120 ~ "Long",
@@ -102,9 +102,17 @@ SBA_NY_Term <- SBA_NY %>%
 SBA_NY_Term
 ```
 
-### Section 2.3: Y v.s X3 ...
+### Section 2.3: Each company size default rate v.s Term
 ```{r}
-
+SBA_NY_Size <- SBA_NY %>%
+  mutate(Size = case_when(NoEmp <= 100 ~ "Small",
+                          NoEmp > 100 & NoEmp <=999 ~ "Median",
+                          NoEmp >999 ~ "Large" )) %>%
+  group_by(Size) %>%
+  summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
+            PIF = sum(MIS_Status =="P I F"), 
+            default_rate = round(CHGOFF /(CHGOFF +PIF),2))
+SBA_NY_Size
 ```
 
 ## Section 3: Fit Linear Model
