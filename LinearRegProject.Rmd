@@ -7,13 +7,6 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-# Should This Loan be Approved or Denied?
-
-## Setup
-```{r}
-# Setup
 library(tidyverse)
 library(lubridate)
 library(broom)
@@ -30,7 +23,12 @@ library(ISLR)
 library(caret)
 library(xtable)
 library(MASS)
+```
 
+# Should This Loan be Approved or Denied?
+
+## Setup
+```{r}
 SBAnational_raw <- read.csv(file = "SBAnational.csv", header = T)
 SBAnational_raw <- na.omit(SBAnational_raw)
 head(SBAnational_raw, 5)
@@ -249,7 +247,7 @@ SBA_NY_final <- SBA_NY_in %>%
   mutate(prop = SBA_Appv / GrAppv) %>%
   mutate(Portion = case_when(prop <= quantile(prop, 0.75) ~ 1,
                              prop > quantile(prop, 0.75) ~ 0))
-SBA_NY_final
+head(SBA_NY_final,5)
 ```
 
 ```{r}
@@ -347,5 +345,6 @@ summary(best.model)
 table(predicted.classes)
 # Model accuracy
 mean(predicted.classes==SBA_NY_test$MIS_Status)
+
 bestMod$results
 ```
