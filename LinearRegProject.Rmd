@@ -25,43 +25,54 @@ library(dplyr)
 library(viridis)
 library(sf)
 library(plotly)
+library(olsrr)
+library(ISLR)
+library(caret)
+library(xtable)
+library(MASS)
 
 SBAnational_raw <- read.csv(file = "SBAnational.csv", header = T)
 SBAnational_raw <- na.omit(SBAnational_raw)
 head(SBAnational_raw, 5)
 #apply(is.na(SBA_NY_raw), 2, sum)
 ```
-## Section 1: Pre-Process
+## Section 1: Data Pre-Process
 
 ```{r}
 # Choose the data after 2000
 SBAnational <- SBAnational_raw %>% 
   mutate(DisbursementDate = dmy(DisbursementDate)) %>%
   filter(LowDoc %in% c("Y", "N"),
-         year(DisbursementDate) >= 2000,          
+         RevLineCr %in% c("Y", "N"),
+         year(DisbursementDate) >= 2000,
          MIS_Status == "P I F" | MIS_Status == "CHGOFF",
-         NewExist != 0, UrbanRural != 0)
+         NewExist != 0, UrbanRural != 0,
+         UrbanRural != 0)
 head(SBAnational, 5)
 
 rmSym <- function(string){
   string <- substr(string, start = 2, stop = nchar(string))
   return(string)
 }
+
 SBAnational$DisbursementGross <- 
   as.numeric(gsub(",","", rmSym(SBAnational$DisbursementGross)))
+
 SBAnational$BalanceGross <- 
   as.numeric(gsub(",","", rmSym(SBAnational$BalanceGross)))
+
 SBAnational$GrAppv <- as.numeric(gsub(",","", rmSym(SBAnational$GrAppv)))
+
 SBAnational$SBA_Appv <- as.numeric(gsub(",","", rmSym(SBAnational$SBA_Appv)))
 
-# Visualization
+## Visualization
 SBAnational_map <- SBAnational %>% 
   group_by(State) %>% 
   summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
             PIF = sum(MIS_Status =="P I F"), 
             default_rate = CHGOFF /(CHGOFF +PIF)) %>% 
-  rename("state" = "State") %>% 
-    select(-CHGOFF, -PIF) 
+  rename("state" = "State")
+
 parts <- slice(as.data.frame(SBAnational_map), 2:52)
 plot_usmap(data = parts, values = "default_rate",regions = "state") +
   scale_fill_continuous(low = "white", high = "red", 
@@ -75,8 +86,8 @@ head(SBA_NY, 5)
 ```
 
 
-## Section 2: Explore the Variables
-### Section 2.1
+## Section 2: Variable Exploration and Transformation
+
 ```{r}
 SBA_NY_NAICS <- SBA_NY %>%
   mutate(Industy_code = as.numeric(substr(as.character(SBA_NY$NAICS), 
@@ -86,23 +97,22 @@ SBA_NY_NAICS <- SBA_NY %>%
             PIF = sum(MIS_Status =="P I F"), 
             default_rate = round(CHGOFF /(CHGOFF +PIF),2))
 SBA_NY_NAICS
+
+ggplot(SBA_NY_NAICS) +
+  geom_col(aes(x = Industy_code, y = default_rate))
 ```
 
-From the graphs, we can see that the default rates are different in each industry, so we take NAICS into our consideration
-
-### Section 2.2
 ```{r}
 SBA_NY_Term <- SBA_NY %>%
   mutate(LoanTerm = case_when(Term >= 240 ~ "Long",
                               Term < 240 ~ "Short")) %>%
   group_by(LoanTerm) %>%
-  summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
-            PIF = sum(MIS_Status =="P I F"), 
-            default_rate = round(CHGOFF /(CHGOFF +PIF),2))
+  summarize(CHGOFF = sum(MIS_Status == "CHGOFF"),
+            PIF = sum(MIS_Status == "P I F"), 
+            default_rate = round(CHGOFF /(CHGOFF + PIF),2))
 SBA_NY_Term
 ```
 
-### Section 2.3
 ```{r}
 SBA_NY_Size <- SBA_NY %>%
   mutate(Size = case_when(NoEmp <= 100 ~ "Small",
@@ -113,7 +123,7 @@ SBA_NY_Size <- SBA_NY %>%
             default_rate = round(CHGOFF /(CHGOFF +PIF),2))
 SBA_NY_Size
 ```
-### Section 2.4
+
 ```{r}
 SBA_NY_GrossDis <- SBA_NY %>%
   group_by(MIS_Status) %>%
@@ -126,30 +136,43 @@ SBA_NY_GrossDis <- SBA_NY %>%
             PIF = sum(MIS_Status =="P I F"), 
             default_rate = round(CHGOFF /(CHGOFF +PIF),2))
 SBA_NY_GrossDis
+
+SBA_NY_GrossDisbursement_PIF <- SBAnational %>% 
+  group_by(MIS_Status) %>%
+  filter(MIS_Status == "P I F") %>% 
+  summarize(q25 = quantile(DisbursementGross,0.25),
+            mean = quantile(DisbursementGross,0.5),
+            q75 = quantile(DisbursementGross,0.75))
+SBA_NY_GrossDisbursement_PIF
+
+SBA_NY_GrossDisbursement_CHGOFF <- SBAnational%>% 
+  drop_na() %>% 
+  group_by(MIS_Status) %>%
+  filter(MIS_Status == "CHGOFF") %>% 
+  summarize(q25 = quantile(DisbursementGross,0.25),
+            mean = quantile(DisbursementGross,0.5),
+            q75 = quantile(DisbursementGross,0.75))
+SBA_NY_GrossDisbursement_CHGOFF
 ```
 
-### Section 2.5
 ```{r}
 SBA_NY_UrbanRural <- SBA_NY %>%
-  filter(UrbanRural != 0) %>%
   group_by(UrbanRural) %>%
-  summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
-            PIF = sum(MIS_Status =="P I F"), 
-            default_rate = round(CHGOFF /(CHGOFF +PIF),2))
+  summarize(CHGOFF = sum(MIS_Status == "CHGOFF"),
+            PIF = sum(MIS_Status == "P I F"), 
+            default_rate = round(CHGOFF /(CHGOFF + PIF),2))
 SBA_NY_UrbanRural
 ```
 
-### Section 2.6
 ```{r}
 SBA_NY_NewExist <- SBA_NY %>%
   group_by(NewExist) %>%
   summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
             PIF = sum(MIS_Status =="P I F"), 
-            default_rate = round(CHGOFF /(CHGOFF +PIF),2))
+            default_rate = round(CHGOFF /(CHGOFF + PIF),2))
 SBA_NY_NewExist
 ```
 
-### Section 2.7
 ```{r}
 SBA_NY_RevLineCr <- SBA_NY %>%
   group_by(RevLineCr) %>%
@@ -159,7 +182,6 @@ SBA_NY_RevLineCr <- SBA_NY %>%
 SBA_NY_RevLineCr
 ```
 
-### Section 2.8
 ```{r}
 SBA_NY_LowDoc <- SBA_NY %>%
   group_by(LowDoc) %>%
@@ -169,7 +191,6 @@ SBA_NY_LowDoc <- SBA_NY %>%
 SBA_NY_LowDoc
 ```
 
-### Section 2.9
 ```{r}
 SBA_NY_prop <- SBA_NY %>%
   mutate(prop = SBA_Appv / GrAppv) %>%
@@ -185,72 +206,146 @@ SBA_NY_prop <- SBA_NY %>%
 SBA_NY_prop
 ```
 
-## Section 3: Fit Linear Model
-### Section 3.1: Set up final dataset
 ```{r}
-SBA_NY_final <- SBA_NY %>%
+SBA_GuaranteedPortion <- SBA_NY %>% group_by(MIS_Status) %>% summarize(portion = SBA_Appv/GrAppv)
+ggplot(SBA_GuaranteedPortion, aes(x = MIS_Status, y = portion))+
+  geom_boxplot()
+```
+
+```{r}
+SBA_NY_Recession <- SBA_NY %>%  
+   mutate(Recession = case_when(as_date(DisbursementDate) >= as_date("2007-12-01") & as_date(DisbursementDate) <= as_date("2009-06-30") ~ 1,
+                               as_date(DisbursementDate) < as_date("2007-12-01") | as_date(DisbursementDate) >  as_date("2009-06-30") ~0)) %>% 
+  group_by(Recession) %>% 
+  summarize(CHGOFF = sum(MIS_Status =="CHGOFF"),
+            PIF = sum(MIS_Status =="P I F"), 
+            default_rate = round(CHGOFF /(CHGOFF +PIF),2)) 
+SBA_NY_Recession
+```
+
+```{r}
+SBA_NY_in <- SBA_NY %>%
+  mutate(Industy_code = as.numeric(substr(as.character(SBA_NY$NAICS), 
+                                       start = 1, stop = 2))) %>% 
+  filter(Industy_code == 42)
+
+SBA_NY_final <- SBA_NY_in %>%
   mutate(LoanTerm = case_when(Term >= 240 ~ 0,
                               Term < 240 ~ 1)) %>%
   mutate(Size = case_when(NoEmp <= 100 ~ 1,
                           NoEmp > 100 ~ 0)) %>%
   mutate(MIS_Status = case_when(MIS_Status == "P I F" ~ 0,
-                                MIS_Status == "CHGOFF"~ 1)) %>%
+                                MIS_Status == "CHGOFF" ~ 1)) %>%
   mutate(LowDoc = case_when(LowDoc == "Y" ~ 0,
-                            LowDoc == "N"~ 1))
-#SBA_NY_final
-table(SBA_NY_final$MIS_Status)
+                            LowDoc == "N"~ 1)) %>% 
+  mutate(RevLineCr = case_when(RevLineCr == "Y" ~ 0,
+                               RevLineCr == "N"~ 1)) %>%
+  mutate(New = case_when(NewExist == 1 ~ 1,
+                          NewExist == 2 ~ 0)) %>% 
+  mutate(UrbanRural = case_when(UrbanRural == 1 ~ 1,
+                                UrbanRural == 2 ~ 0)) %>% 
+  mutate(Recession = case_when(as_date(DisbursementDate) >= as_date("2007-12-01") & as_date(DisbursementDate) <= as_date("2009-06-30") ~ 1,
+                               as_date(DisbursementDate) < as_date("2007-12-01") | as_date(DisbursementDate) >  as_date("2009-06-30") ~0)) %>%
+  mutate(prop = SBA_Appv / GrAppv) %>%
+  mutate(Portion = case_when(prop <= quantile(prop, 0.75) ~ 1,
+                             prop > quantile(prop, 0.75) ~ 0))
+SBA_NY_final
 ```
 
-### Section 3.2: Split Training-Testing data
 ```{r}
-# ## 50% of the sample size
-# sample_size <- floor(0.5 * nrow(SBA_NY_final))
-# 
-# ## set the seed to make partition reproducible
-# set.seed(123)
-# train_index <- sample(seq_len(nrow(SBA_NY_final)), size = sample_size)
-# 
-# SBA_NY_train <- SBA_NY_final[train_index, ]
-# SBA_NY_test <- SBA_NY_final[-train_index, ]
-#####################
-
-# Use the data before 2005 as training data
-train = year(SBA_NY_final$DisbursementDate) < 2005
+pairs(MIS_Status ~ LoanTerm + Size + LowDoc + RevLineCr + New + 
+        UrbanRural + Portion + Recession, data = SBA_NY_final,pch = 0.1)
 ```
 
-### Section 3.3: Fit logistical model
+## Section 4: Fit Linear Model
+### Section 4.1: Split Training-Testing data
 ```{r}
-# mylog <- glm(MIS_Status ~ LoanTerm + Size + LowDoc, data = SBA_NY_train, family = "binomial")
-# summary(mylog)
+## 50% of the sample size
+sample_size <- floor(0.5 * nrow(SBA_NY_final))
 
-glm.fit <- glm(MIS_Status ~ LoanTerm + Size + LowDoc,
-               data = SBA_NY_final,
-               family = binomial,
-               subset = train)
-probs <- predict(glm.fit, 
-                 newdata = SBA_NY_final[!train,], 
-                 type = "response")
-pred = ifelse(probs > 0.5, 1, 0)
-MIS_Status.2005 = SBA_NY_final$MIS_Status[!train]
-table(pred, MIS_Status.2005)
-mean(pred == MIS_Status.2005)
-table(SBA_NY_final$LoanTerm)
+## set the seed to make partition reproducible
+set.seed(123)
+train_index <- sample(seq_len(nrow(SBA_NY_final)), size = sample_size)
+
+SBA_NY_train <- SBA_NY_final[train_index, ]
+SBA_NY_test <- SBA_NY_final[-train_index, ]
+
+# # Use the data before 2005 as training data
+# train = year(SBA_NY_final$DisbursementDate) < 2005
+# glm.fit <- glm(MIS_Status ~ LoanTerm + Size + LowDoc,
+#                data = SBA_NY_final,
+#                family = binomial,
+#                subset = train)
+# probs <- predict(glm.fit, 
+#                  newdata = SBA_NY_final[!train,], 
+#                  type = "response")
+# pred = ifelse(probs > 0.5, 1, 0)
+# MIS_Status.2005 = SBA_NY_final$MIS_Status[!train]
+# table(pred, MIS_Status.2005)
+# mean(pred == MIS_Status.2005)
 ```
 
-## Section 4: Testing/Validation
+### Section 4.2: Fit Logistic Model
+```{r}
+# Full model
+full.model <- glm(MIS_Status ~ LoanTerm + Size + LowDoc + 
+                    RevLineCr + New + UrbanRural + Portion + Recession, 
+                  data = SBA_NY_train, family = binomial)
+coef(full.model)
+
+# Perform stepwise variable selection
+step.model <- full.model %>% stepAIC(trace = TRUE)
+coef(step.model)
+
+# Fit the best model
+best.model <- glm(MIS_Status ~ LoanTerm + RevLineCr  + New + 
+                    UrbanRural + Portion + Recession, 
+                  data = SBA_NY_train, family = binomial)
+
+# Summarize the final selected model
+summary(best.model)
+```
+
+## Section 5: Testing and Prediction
 
 ```{r}
+# Make predictions
+probabilities <- best.model %>% predict(SBA_NY_test, type = "response")
 # Decision rule would be that approve the loan if estimated probability of default <= 0.5; otherwise, deny the loan. 
-# max(mylog$fitted.values)
-probs <- predict(mylog, SBA_NY_test, type = "response")
-pred = ifelse(probs > 0.5, 1, 0)
-table(pred)
-```
+predicted.classes <- ifelse(probabilities > 0.5, 1, 0)  
 
-## Section 5: Prediction
+# Result
+table(predicted.classes)
+# Model accuracy
+mean(predicted.classes==SBA_NY_test$MIS_Status)
 
-```{r}
+# define training control
+train_control <- trainControl(method = "cv", number = 10)
 
+# train the model on training set
+# fullMod <- train(MIS_Status ~ LoanTerm + Size + LowDoc + RevLineCr + 
+#               New + UrbanRural + Portion + Recession,
+#             data = SBA_NY_train,
+#             trControl = train_control,
+#             method = "glm",
+#             family=binomial())
+# fullMod$results
+bestMod <- train(MIS_Status ~ LoanTerm + RevLineCr  + New + 
+              UrbanRural + Portion + Recession,
+            data = SBA_NY_train,
+            trControl = train_control,
+            method = "glm",
+            family=binomial())
+bestMod$results
 ```
 
 ## Section 6: Conclusion
+```{r}
+summary(best.model)
+
+# Result of the prediction
+table(predicted.classes)
+# Model accuracy
+mean(predicted.classes==SBA_NY_test$MIS_Status)
+bestMod$results
+```
