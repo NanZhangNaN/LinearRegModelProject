@@ -248,6 +248,7 @@ SBA_NY_final <- SBA_NY_in %>%
   mutate(Portion = case_when(prop <= quantile(prop, 0.75) ~ 1,
                              prop > quantile(prop, 0.75) ~ 0))
 head(SBA_NY_final,5)
+colnames(SBA_NY)
 ```
 
 ```{r}
@@ -285,7 +286,7 @@ SBA_NY_test <- SBA_NY_final[-train_index, ]
 
 ### Section 4.2: Fit Logistic Model
 ```{r}
-# Full model
+# Fit the full model
 full.model <- glm(MIS_Status ~ LoanTerm + Size + LowDoc + 
                     RevLineCr + New + UrbanRural + Portion + Recession, 
                   data = SBA_NY_train, family = binomial)
@@ -296,7 +297,7 @@ step.model <- full.model %>% stepAIC(trace = TRUE)
 coef(step.model)
 
 # Fit the best model
-best.model <- glm(MIS_Status ~ LoanTerm + RevLineCr  + New + 
+best.model <- glm(MIS_Status ~ LoanTerm + RevLineCr + New + 
                     UrbanRural + Portion + Recession, 
                   data = SBA_NY_train, family = binomial)
 
@@ -304,11 +305,13 @@ best.model <- glm(MIS_Status ~ LoanTerm + RevLineCr  + New +
 summary(best.model)
 ```
 
-## Section 5: Testing and Prediction
+## Section 5: Prediction and Testing
+### Section 5.1: Prediction
 
 ```{r}
 # Make predictions
 probabilities <- best.model %>% predict(SBA_NY_test, type = "response")
+hist(probabilities, main = "Histogram of predictions", xlim = c(0,1))
 # Decision rule would be that approve the loan if estimated probability of default <= 0.5; otherwise, deny the loan. 
 predicted.classes <- ifelse(probabilities > 0.5, 1, 0)  
 
@@ -316,25 +319,39 @@ predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
 table(predicted.classes)
 # Model accuracy
 mean(predicted.classes==SBA_NY_test$MIS_Status)
+```
 
-# define training control
+### Section 5.2: Testing
+
+```{r}
+# K-Fold Cross Validation
 train_control <- trainControl(method = "cv", number = 10)
 
 # train the model on training set
-# fullMod <- train(MIS_Status ~ LoanTerm + Size + LowDoc + RevLineCr + 
-#               New + UrbanRural + Portion + Recession,
-#             data = SBA_NY_train,
-#             trControl = train_control,
-#             method = "glm",
-#             family=binomial())
-# fullMod$results
-bestMod <- train(MIS_Status ~ LoanTerm + RevLineCr  + New + 
+fullMod <- train(MIS_Status ~ LoanTerm + Size + LowDoc + RevLineCr +
+              New + UrbanRural + Portion + Recession,
+            data = SBA_NY_train,
+            trControl = train_control,
+            method = "glm",
+            family=binomial())
+fullMod$results
+full.pred = predict(fullMod, newdata = SBA_NY_test)
+full.pred.class <- ifelse(full.pred > 0.5, 1, 0)
+confusionMatrix(factor(full.pred.class), factor(SBA_NY_test$MIS_Status))
+
+bestMod <- train(MIS_Status ~ LoanTerm + RevLineCr + New + 
               UrbanRural + Portion + Recession,
             data = SBA_NY_train,
             trControl = train_control,
             method = "glm",
             family=binomial())
 bestMod$results
+best.pred = predict(bestMod, newdata = SBA_NY_test)
+best.pred.class <- ifelse(best.pred > 0.5, 1, 0)
+confusionMatrix(factor(best.pred.class), factor(SBA_NY_test$MIS_Status))
+
+#Likelihood Ratio Test
+#anova(full.model, best.model, test = "Chisq")
 ```
 
 ## Section 6: Conclusion
@@ -347,4 +364,5 @@ table(predicted.classes)
 mean(predicted.classes==SBA_NY_test$MIS_Status)
 
 bestMod$results
+confusionMatrix(factor(best.pred.class), factor(SBA_NY_test$MIS_Status))
 ```
